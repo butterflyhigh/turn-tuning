@@ -14,6 +14,7 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
 import com.kauailabs.navx.frc.AHRS;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
@@ -33,9 +34,12 @@ public class Robot extends TimedRobot {
   private final WPI_VictorSPX m_rightDrive2 = new WPI_VictorSPX(3);
   private final DifferentialDrive robotDrive = new DifferentialDrive(leftDrive, rightDrive);
   private final XboxController controller = new XboxController(0);
-  private final Timer timer = new Timer();
   private final AHRS navx = new AHRS(Port.kUSB);
-  double goalAngle = navx.getAngle() + 90.0;
+  PIDController pidController = new PIDController(.05, 0, 0.01);
+
+  double debuggingSpeed;
+  double goalAngle = 90;
+  double currentAngle;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -64,6 +68,7 @@ public class Robot extends TimedRobot {
     // block in order for anything in the Command-based framework to work.
     CommandScheduler.getInstance().run();
     SmartDashboard.putNumber("Angle", navx.getAngle());
+    SmartDashboard.putNumber("Angel", debuggingSpeed);
   }
 
   /** This function is called once each time the robot enters Disabled mode. */
@@ -76,8 +81,10 @@ public class Robot extends TimedRobot {
   /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
   @Override
   public void autonomousInit() {
+    navx.zeroYaw();
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
     goalAngle = navx.getAngle() + 90.0;
+    pidController.setSetpoint(90);
 
     // schedule the autonomous command (example)
     if (m_autonomousCommand != null) {
@@ -88,7 +95,9 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-    robotDrive.tankDrive((Math.max(navx.getAngle() - goalAngle, .25) / -180), 0);
+    currentAngle = navx.getAngle();
+    debuggingSpeed = pidController.calculate(currentAngle);
+    robotDrive.tankDrive(debuggingSpeed, 0.0 - debuggingSpeed);
   }
 
   @Override
